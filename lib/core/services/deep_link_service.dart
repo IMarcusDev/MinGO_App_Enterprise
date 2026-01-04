@@ -1,27 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:uni_links/uni_links.dart';
+import 'package:app_links/app_links.dart'; // <--- Nueva librería
 import '../../features/auth/domain/repositories/auth_repository.dart';
 
-/// Servicio para manejar deep links en la aplicación
-///
-/// Maneja los enlaces de verificación de email y reset de contraseña
-/// que llegan desde el backend en formato: mingo://verify-email?token=xxx
 class DeepLinkService {
   final AuthRepository _authRepository;
   StreamSubscription? _sub;
+  final _appLinks = AppLinks(); // <--- Instancia de AppLinks
 
   DeepLinkService(this._authRepository);
 
-  /// Inicializar deep links
-  ///
-  /// Debe llamarse cuando la app arranca para capturar:
-  /// 1. Links cuando la app se abre desde cerrada (getInitialUri)
-  /// 2. Links mientras la app está abierta (uriLinkStream)
   Future<void> initDeepLinks(BuildContext context) async {
-    // Manejar cuando la app se abre desde un link (app cerrada)
+    // 1. Manejar link inicial (App cerrada)
     try {
-      final initialUri = await getInitialUri();
+      final initialUri = await _appLinks.getInitialLink(); // <--- Cambio aquí
       if (initialUri != null && context.mounted) {
         _handleDeepLink(initialUri, context);
       }
@@ -29,10 +21,10 @@ class DeepLinkService {
       debugPrint('Error getting initial URI: $e');
     }
 
-    // Escuchar links mientras la app está abierta
-    _sub = uriLinkStream.listen(
-      (Uri? uri) {
-        if (uri != null && context.mounted) {
+    // 2. Escuchar links (App abierta/segundo plano)
+    _sub = _appLinks.uriLinkStream.listen( // <--- Cambio aquí
+      (Uri uri) {
+        if (context.mounted) {
           _handleDeepLink(uri, context);
         }
       },
@@ -42,17 +34,17 @@ class DeepLinkService {
     );
   }
 
-  /// Manejar el deep link recibido
+  // --- El resto del código es IDÉNTICO al que tenías ---
+
   void _handleDeepLink(Uri uri, BuildContext context) {
     debugPrint('Deep link received: $uri');
 
-    // Verificar el esquema
+    // Verificar el esquema (mingo://)
     if (uri.scheme != 'mingo') {
       debugPrint('Invalid scheme: ${uri.scheme}');
       return;
     }
 
-    // Manejar según el host (ruta)
     switch (uri.host) {
       case 'verify-email':
         final token = uri.queryParameters['token'];
@@ -77,39 +69,20 @@ class DeepLinkService {
     }
   }
 
-  /// Verificar email con token
   Future<void> _verifyEmail(String token, BuildContext context) async {
-    // Mostrar loading
     _showLoading(context, 'Verificando email...');
-
     try {
       final result = await _authRepository.verifyEmail(token);
-
       if (!context.mounted) return;
-
-      // Cerrar loading
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(); // Cerrar loading
 
       result.fold(
-        (failure) {
-          _showError(
-            context,
-            'Error al verificar email: ${failure.message}',
-          );
-        },
+        (failure) => _showError(context, 'Error: ${failure.message}'),
         (response) {
-          _showSuccess(
-            context,
-            response.message,
-          );
-
-          // Navegar al login después de 2 segundos
+          _showSuccess(context, response.message);
           Future.delayed(const Duration(seconds: 2), () {
             if (context.mounted) {
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/login',
-                (route) => false,
-              );
+              Navigator.of(context).pushNamedAndRemoveUntil('/login', (r) => false);
             }
           });
         },
@@ -121,54 +94,36 @@ class DeepLinkService {
     }
   }
 
-  /// Navegar a la pantalla de reset de contraseña
   void _navigateToResetPassword(String token, BuildContext context) {
-    Navigator.of(context).pushNamed(
-      '/reset-password',
-      arguments: token,
-    );
+    Navigator.of(context).pushNamed('/reset-password', arguments: token);
   }
 
-  /// Mostrar diálogo de loading
   void _showLoading(BuildContext context, String message) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        content: Row(
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(width: 16),
-            Expanded(child: Text(message)),
-          ],
-        ),
+      builder: (ctx) => AlertDialog(
+        content: Row(children: [
+          const CircularProgressIndicator(),
+          const SizedBox(width: 16),
+          Expanded(child: Text(message)),
+        ]),
       ),
     );
   }
 
-  /// Mostrar mensaje de error
-  void _showError(BuildContext context, String message) {
+  void _showError(BuildContext context, String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 4),
-      ),
+      SnackBar(content: Text(msg), backgroundColor: Colors.red),
     );
   }
 
-  /// Mostrar mensaje de éxito
-  void _showSuccess(BuildContext context, String message) {
+  void _showSuccess(BuildContext context, String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 3),
-      ),
+      SnackBar(content: Text(msg), backgroundColor: Colors.green),
     );
   }
 
-  /// Limpiar recursos
   void dispose() {
     _sub?.cancel();
   }
