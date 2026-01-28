@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'core/config/app_config.dart';
+import 'core/cache/cache_service.dart';
 import 'core/network/api_client.dart';
 import 'core/network/network_info.dart';
 import 'core/services/deep_link_service.dart';
@@ -64,6 +65,12 @@ import 'features/premium/presentation/bloc/translator_bloc.dart';
 // Hand Tracking
 import 'features/hand_tracking/presentation/bloc/hand_tracking_bloc.dart';
 
+// Achievements
+import 'features/achievements/data/datasources/achievement_local_datasource.dart';
+import 'features/achievements/data/repositories/achievement_repository_impl.dart';
+import 'features/achievements/domain/repositories/achievement_repository.dart';
+import 'features/achievements/presentation/bloc/achievement_bloc.dart';
+
 final sl = GetIt.instance;
 
 Future<void> init() async {
@@ -80,7 +87,10 @@ Future<void> init() async {
   sl.registerLazySingleton(() => secureStorage);
   
   sl.registerLazySingleton(() => Connectivity());
-  
+
+  // Cache Service (singleton ya inicializado en main.dart)
+  sl.registerLazySingleton<CacheService>(() => CacheService.instance);
+
   // Dio
   sl.registerLazySingleton(() {
     final dio = Dio(BaseOptions(
@@ -142,7 +152,10 @@ Future<void> init() async {
   sl.registerLazySingleton(() => ForgotPasswordUseCase(sl()));
   sl.registerLazySingleton(() => ResetPasswordUseCase(sl()));
   sl.registerLazySingleton(() => RefreshTokenUseCase(sl()));
-  
+  sl.registerLazySingleton(() => UpdateProfileUseCase(sl()));
+  sl.registerLazySingleton(() => ChangePasswordUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteAccountUseCase(sl()));
+
   // Auth BLoC
   sl.registerFactory(() => AuthBloc(
     loginUseCase: sl(),
@@ -155,6 +168,9 @@ Future<void> init() async {
     forgotPasswordUseCase: sl(),
     resetPasswordUseCase: sl(),
     refreshTokenUseCase: sl(),
+    updateProfileUseCase: sl(),
+    changePasswordUseCase: sl(),
+    deleteAccountUseCase: sl(),
   ));
 
   // ============================================
@@ -337,4 +353,17 @@ Future<void> init() async {
   // Hand Tracking Feature
   // ============================================
   sl.registerFactory(() => HandTrackingBloc());
+
+  // ============================================
+  // Achievements Feature
+  // ============================================
+  sl.registerLazySingleton<AchievementLocalDataSource>(
+    () => AchievementLocalDataSourceImpl(sharedPreferences: sl()),
+  );
+
+  sl.registerLazySingleton<AchievementRepository>(
+    () => AchievementRepositoryImpl(localDataSource: sl()),
+  );
+
+  sl.registerFactory(() => AchievementBloc(repository: sl()));
 }

@@ -214,4 +214,59 @@ class ContentRepositoryImpl implements ContentRepository {
   Future<void> clearCache() async {
     await localDataSource.clearContentCache();
   }
+
+  @override
+  Future<Either<Failure, SearchResult>> searchContent(String query) async {
+    if (query.trim().isEmpty) {
+      return const Right(SearchResult(modules: [], lessons: []));
+    }
+
+    final searchTerm = query.toLowerCase().trim();
+
+    try {
+      // Obtener todos los módulos
+      final modulesResult = await getModules();
+      List<Module> matchingModules = [];
+      List<Lesson> matchingLessons = [];
+
+      modulesResult.fold(
+        (failure) => null,
+        (modules) {
+          // Filtrar módulos que coincidan
+          matchingModules = modules.where((module) {
+            return module.title.toLowerCase().contains(searchTerm) ||
+                (module.description?.toLowerCase().contains(searchTerm) ?? false);
+          }).toList();
+        },
+      );
+
+      // Buscar en lecciones de cada módulo
+      final allModulesResult = await getModules();
+      await allModulesResult.fold(
+        (failure) async => null,
+        (modules) async {
+          for (final module in modules) {
+            final lessonsResult = await getLessons(module.id);
+            lessonsResult.fold(
+              (failure) => null,
+              (lessons) {
+                final matching = lessons.where((lesson) {
+                  return lesson.title.toLowerCase().contains(searchTerm) ||
+                      (lesson.description?.toLowerCase().contains(searchTerm) ?? false);
+                });
+                matchingLessons.addAll(matching);
+              },
+            );
+          }
+        },
+      );
+
+      return Right(SearchResult(
+        modules: matchingModules,
+        lessons: matchingLessons,
+      ));
+    } catch (e) {
+      return Left(ServerFailure(message: 'Error al buscar: $e'));
+    }
+  }
 }

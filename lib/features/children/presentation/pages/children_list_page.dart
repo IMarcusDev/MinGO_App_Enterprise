@@ -6,8 +6,17 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../injection_container.dart';
+import '../../../premium/presentation/bloc/membership_bloc.dart';
 import '../../domain/entities/child_entity.dart';
 import '../bloc/children_bloc.dart';
+
+/// Límites de hijos por plan
+class ChildrenLimits {
+  static const int freeLimit = 2;
+  static const int premiumLimit = 10;
+
+  static int getLimit(bool isPremium) => isPremium ? premiumLimit : freeLimit;
+}
 
 class ChildrenListPage extends StatelessWidget {
   const ChildrenListPage({super.key});
@@ -68,15 +77,14 @@ class _ChildrenListView extends StatelessWidget {
           return const SizedBox.shrink();
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await AppNavigator.pushNamed(AppRoutes.childForm);
-          if (result == true && context.mounted) {
-            context.read<ChildrenBloc>().add(const LoadChildrenEvent());
-          }
+      floatingActionButton: BlocBuilder<ChildrenBloc, ChildrenState>(
+        builder: (context, childrenState) {
+          return FloatingActionButton.extended(
+            onPressed: () => _onAddChild(context, childrenState),
+            icon: const Icon(Icons.add),
+            label: const Text('Agregar'),
+          );
         },
-        icon: const Icon(Icons.add),
-        label: const Text('Agregar'),
       ),
     );
   }
@@ -151,6 +159,98 @@ class _ChildrenListView extends StatelessWidget {
             },
             child: const Text('Reintentar'),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _onAddChild(BuildContext context, ChildrenState childrenState) async {
+    // Obtener el número actual de hijos
+    int currentCount = 0;
+    if (childrenState is ChildrenLoadedState) {
+      currentCount = childrenState.children.length;
+    }
+
+    // Verificar si es premium
+    final membershipState = context.read<MembershipBloc>().state;
+    final isPremium = membershipState.isPremium;
+    final limit = ChildrenLimits.getLimit(isPremium);
+
+    // Verificar si se alcanzó el límite
+    if (currentCount >= limit) {
+      _showLimitReachedDialog(context, isPremium, limit);
+      return;
+    }
+
+    // Si no se ha alcanzado el límite, navegar al formulario
+    final result = await AppNavigator.pushNamed(AppRoutes.childForm);
+    if (result == true && context.mounted) {
+      context.read<ChildrenBloc>().add(const LoadChildrenEvent());
+    }
+  }
+
+  void _showLimitReachedDialog(BuildContext context, bool isPremium, int limit) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              isPremium ? Icons.child_care : Icons.lock_outline,
+              color: AppColors.warning,
+            ),
+            const SizedBox(width: AppDimensions.spaceS),
+            const Text('Límite alcanzado'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Has alcanzado el límite de $limit ${limit == 1 ? 'hijo' : 'hijos'} para tu plan${isPremium ? ' Premium' : ' Gratuito'}.',
+              style: AppTypography.bodyMedium,
+            ),
+            if (!isPremium) ...[
+              const SizedBox(height: AppDimensions.space),
+              Container(
+                padding: const EdgeInsets.all(AppDimensions.spaceM),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.star, color: AppColors.warning),
+                    const SizedBox(width: AppDimensions.spaceS),
+                    Expanded(
+                      child: Text(
+                        '¡Actualiza a Premium y registra hasta ${ChildrenLimits.premiumLimit} hijos!',
+                        style: AppTypography.bodySmall.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Entendido'),
+          ),
+          if (!isPremium)
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                AppNavigator.pushNamed(AppRoutes.membership);
+              },
+              icon: const Icon(Icons.star),
+              label: const Text('Ver Premium'),
+            ),
         ],
       ),
     );

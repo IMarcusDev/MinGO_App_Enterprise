@@ -17,8 +17,13 @@ class ImportContentPage extends StatefulWidget {
 }
 
 class _ImportContentPageState extends State<ImportContentPage> {
+  final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
+  final _videoUrlController = TextEditingController();
+  final _imageUrlController = TextEditingController();
+  final _audioUrlController = TextEditingController();
   final _phraseController = TextEditingController();
+  final _exampleSentenceController = TextEditingController();
   final _keywordController = TextEditingController();
 
   @override
@@ -30,7 +35,11 @@ class _ImportContentPageState extends State<ImportContentPage> {
   @override
   void dispose() {
     _titleController.dispose();
+    _videoUrlController.dispose();
+    _imageUrlController.dispose();
+    _audioUrlController.dispose();
     _phraseController.dispose();
+    _exampleSentenceController.dispose();
     _keywordController.dispose();
     super.dispose();
   }
@@ -39,12 +48,12 @@ class _ImportContentPageState extends State<ImportContentPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Importar Contenido'),
+        title: const Text('Agregar Contenido'),
         actions: [
           BlocBuilder<ContentImportBloc, ContentImportState>(
             builder: (context, state) {
               return IconButton(
-                onPressed: state.status == ContentImportStatus.uploading
+                onPressed: state.status == ContentImportStatus.submitting
                     ? null
                     : () => _resetForm(context),
                 icon: const Icon(Icons.refresh),
@@ -59,8 +68,7 @@ class _ImportContentPageState extends State<ImportContentPage> {
           if (state.status == ContentImportStatus.success) {
             _showSuccessDialog(context);
           }
-          if (state.status == ContentImportStatus.error &&
-              state.errorMessage != null) {
+          if (state.status == ContentImportStatus.error && state.errorMessage != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.errorMessage!),
@@ -72,55 +80,96 @@ class _ImportContentPageState extends State<ImportContentPage> {
         builder: (context, state) {
           return Stack(
             children: [
-              ListView(
-                padding: const EdgeInsets.all(AppDimensions.space),
-                children: [
-                  _buildSectionHeader('Archivos Multimedia', Icons.video_library),
-                  const SizedBox(height: AppDimensions.spaceS),
-                  _buildVideoSelector(context, state),
-                  const SizedBox(height: AppDimensions.space),
-                  _buildImageSelector(context, state),
-                  const SizedBox(height: AppDimensions.spaceL),
+              Form(
+                key: _formKey,
+                child: ListView(
+                  padding: const EdgeInsets.all(AppDimensions.space),
+                  children: [
+                    // Tipo de contenido
+                    _buildSectionHeader('Tipo de Contenido', Icons.category),
+                    const SizedBox(height: AppDimensions.spaceS),
+                    _buildContentTypeSelector(context, state),
+                    const SizedBox(height: AppDimensions.spaceL),
 
-                  _buildSectionHeader('Información del Contenido', Icons.info_outline),
-                  const SizedBox(height: AppDimensions.spaceS),
-                  _buildTextField(
-                    controller: _titleController,
-                    label: 'Título del contenido',
-                    hint: 'Ej: Saludo formal',
-                    icon: Icons.title,
-                    error: state.fieldErrors['title'],
-                    onChanged: (v) => context.read<ContentImportBloc>().add(UpdateTitleEvent(v)),
-                  ),
-                  const SizedBox(height: AppDimensions.space),
-                  _buildLevelDropdown(context, state),
-                  const SizedBox(height: AppDimensions.space),
-                  _buildCategoryDropdown(context, state),
-                  const SizedBox(height: AppDimensions.space),
-                  _buildTextField(
-                    controller: _phraseController,
-                    label: state.isCommonPhrases ? 'Frase exacta' : 'Oración de ejemplo',
-                    hint: state.isCommonPhrases ? 'Ej: ¿Cómo te sientes?' : 'Ej: Uso esta seña para saludar',
-                    icon: Icons.format_quote,
-                    maxLines: 2,
-                    error: state.fieldErrors['phrase'],
-                    onChanged: (v) => context.read<ContentImportBloc>().add(UpdatePhraseEvent(v)),
-                  ),
-                  const SizedBox(height: AppDimensions.spaceL),
+                    // URLs de multimedia
+                    _buildSectionHeader('URLs de Multimedia', Icons.link),
+                    const SizedBox(height: AppDimensions.spaceS),
+                    _buildUrlField(
+                      controller: _videoUrlController,
+                      label: 'URL del Video *',
+                      hint: 'https://ejemplo.com/video.mp4',
+                      icon: Icons.videocam,
+                      error: state.fieldErrors['videoUrl'],
+                      onChanged: (v) => context.read<ContentImportBloc>().add(UpdateVideoUrlEvent(v)),
+                    ),
+                    const SizedBox(height: AppDimensions.space),
+                    _buildUrlField(
+                      controller: _imageUrlController,
+                      label: 'URL de Imagen (opcional)',
+                      hint: 'https://ejemplo.com/imagen.jpg',
+                      icon: Icons.image,
+                      error: state.fieldErrors['imageUrl'],
+                      onChanged: (v) => context.read<ContentImportBloc>().add(UpdateImageUrlEvent(v)),
+                    ),
+                    const SizedBox(height: AppDimensions.space),
+                    _buildUrlField(
+                      controller: _audioUrlController,
+                      label: 'URL de Audio (opcional)',
+                      hint: 'https://ejemplo.com/audio.mp3',
+                      icon: Icons.audiotrack,
+                      error: state.fieldErrors['audioUrl'],
+                      onChanged: (v) => context.read<ContentImportBloc>().add(UpdateAudioUrlEvent(v)),
+                    ),
+                    const SizedBox(height: AppDimensions.spaceL),
 
-                  _buildSectionHeader('Palabras Clave (Opcional)', Icons.tag),
-                  const SizedBox(height: AppDimensions.spaceS),
-                  _buildKeywordsInput(context, state),
-                  const SizedBox(height: AppDimensions.spaceXL),
+                    // Información del contenido
+                    _buildSectionHeader('Información del Contenido', Icons.info_outline),
+                    const SizedBox(height: AppDimensions.spaceS),
+                    _buildTextField(
+                      controller: _titleController,
+                      label: 'Título del contenido *',
+                      hint: 'Ej: Saludo formal',
+                      icon: Icons.title,
+                      error: state.fieldErrors['title'],
+                      onChanged: (v) => context.read<ContentImportBloc>().add(UpdateTitleEvent(v)),
+                    ),
+                    const SizedBox(height: AppDimensions.space),
 
-                  _buildSubmitButton(context, state),
-                  const SizedBox(height: AppDimensions.space),
-                  _buildFormatInfo(),
-                  const SizedBox(height: AppDimensions.spaceXL),
-                ],
+                    // Campos según tipo de contenido
+                    ..._buildTypeSpecificFields(context, state),
+
+                    const SizedBox(height: AppDimensions.space),
+                    _buildTextField(
+                      controller: _exampleSentenceController,
+                      label: 'Oración de ejemplo (opcional)',
+                      hint: 'Ej: Uso esta seña para saludar formalmente',
+                      icon: Icons.format_quote,
+                      maxLines: 2,
+                      onChanged: (v) => context.read<ContentImportBloc>().add(UpdateExampleSentenceEvent(v)),
+                    ),
+                    const SizedBox(height: AppDimensions.spaceL),
+
+                    // Categoría de edad
+                    _buildSectionHeader('Público Objetivo', Icons.people),
+                    const SizedBox(height: AppDimensions.spaceS),
+                    _buildAgeCategoryDropdown(context, state),
+                    const SizedBox(height: AppDimensions.spaceL),
+
+                    // Palabras clave
+                    _buildSectionHeader('Palabras Clave (Opcional)', Icons.tag),
+                    const SizedBox(height: AppDimensions.spaceS),
+                    _buildKeywordsInput(context, state),
+                    const SizedBox(height: AppDimensions.spaceXL),
+
+                    // Botón de envío
+                    _buildSubmitButton(context, state),
+                    const SizedBox(height: AppDimensions.space),
+                    _buildFormatInfo(),
+                    const SizedBox(height: AppDimensions.spaceXL),
+                  ],
+                ),
               ),
-              if (state.status == ContentImportStatus.uploading)
-                _buildUploadingOverlay(state),
+              if (state.status == ContentImportStatus.submitting) _buildSubmittingOverlay(),
             ],
           );
         },
@@ -138,140 +187,137 @@ class _ImportContentPageState extends State<ImportContentPage> {
     );
   }
 
-  Widget _buildVideoSelector(BuildContext context, ContentImportState state) {
-    final hasVideo = state.content.hasVideo;
-    final error = state.fieldErrors['video'];
-
+  Widget _buildContentTypeSelector(BuildContext context, ContentImportState state) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InkWell(
-          onTap: () => _pickVideo(context),
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            height: 120,
-            decoration: BoxDecoration(
-              color: hasVideo
-                  ? AppColors.success.withOpacity(0.1)
-                  : Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: error != null ? AppColors.error : (hasVideo ? AppColors.success : Colors.transparent),
-                width: error != null ? 2 : 1,
+      children: SignContentType.values.map((type) {
+        final isSelected = state.content.contentType == type;
+        return Card(
+          margin: const EdgeInsets.only(bottom: AppDimensions.spaceS),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radius),
+            side: BorderSide(
+              color: isSelected ? AppColors.primary : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: RadioListTile<SignContentType>(
+            value: type,
+            groupValue: state.content.contentType,
+            onChanged: (value) {
+              if (value != null) {
+                context.read<ContentImportBloc>().add(UpdateContentTypeEvent(value));
+              }
+            },
+            title: Text(
+              type.displayName,
+              style: AppTypography.titleSmall.copyWith(
+                color: isSelected ? AppColors.primary : null,
+                fontWeight: isSelected ? FontWeight.bold : null,
               ),
             ),
-            child: hasVideo
-                ? _buildSelectedFile(
-                    state.content.videoPath!,
-                    Icons.videocam,
-                    AppColors.success,
-                    onRemove: () => context.read<ContentImportBloc>().add(const RemoveVideoEvent()),
-                  )
-                : _buildFilePlaceholder('Subir Video', 'MP4 (máx. 50MB)', Icons.video_call),
-          ),
-        ),
-        if (error != null) _buildErrorText(error),
-        _buildHelperText('* Requerido'),
-      ],
-    );
-  }
-
-  Widget _buildImageSelector(BuildContext context, ContentImportState state) {
-    final hasImage = state.content.hasImage;
-    final error = state.fieldErrors['image'];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InkWell(
-          onTap: () => _pickImage(context),
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            height: 120,
-            decoration: BoxDecoration(
-              color: hasImage
-                  ? AppColors.info.withOpacity(0.1)
-                  : Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: error != null ? AppColors.error : (hasImage ? AppColors.info : Colors.transparent),
-              ),
+            subtitle: Text(
+              _getContentTypeDescription(type),
+              style: AppTypography.bodySmall,
             ),
-            child: hasImage
-                ? _buildSelectedFile(
-                    state.content.imagePath!,
-                    Icons.image,
-                    AppColors.info,
-                    onRemove: () => context.read<ContentImportBloc>().add(const RemoveImageEvent()),
-                  )
-                : _buildFilePlaceholder('Subir Imagen', 'JPG, PNG (máx. 50MB)', Icons.add_photo_alternate),
+            activeColor: AppColors.primary,
           ),
-        ),
-        if (error != null) _buildErrorText(error),
-        _buildHelperText('Opcional'),
-      ],
+        );
+      }).toList(),
     );
   }
 
-  Widget _buildFilePlaceholder(String title, String subtitle, IconData icon) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, size: 40, color: AppColors.textSecondary),
-        const SizedBox(height: 8),
-        Text(title, style: AppTypography.titleSmall),
-        Text(subtitle, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
-      ],
-    );
+  String _getContentTypeDescription(SignContentType type) {
+    switch (type) {
+      case SignContentType.dictionary:
+        return 'Señas individuales para el diccionario de principiantes';
+      case SignContentType.lesson:
+        return 'Contenido para lecciones de nivel intermedio/avanzado';
+      case SignContentType.commonPhrase:
+        return 'Frases completas de uso cotidiano';
+    }
   }
 
-  Widget _buildSelectedFile(String path, IconData icon, Color color, {VoidCallback? onRemove}) {
-    return Padding(
-      padding: const EdgeInsets.all(AppDimensions.space),
-      child: Row(
-        children: [
+  List<Widget> _buildTypeSpecificFields(BuildContext context, ContentImportState state) {
+    switch (state.content.contentType) {
+      case SignContentType.dictionary:
+        return [
+          _buildLevelSectionDropdown(context, state),
+          const SizedBox(height: AppDimensions.space),
+          _buildContentCategoryDropdown(context, state),
+        ];
+
+      case SignContentType.commonPhrase:
+        return [
+          _buildCommonPhraseCategoryDropdown(context, state),
+          const SizedBox(height: AppDimensions.space),
+          _buildTextField(
+            controller: _phraseController,
+            label: 'Frase completa *',
+            hint: 'Ej: ¿Cómo te sientes hoy?',
+            icon: Icons.chat_bubble_outline,
+            maxLines: 2,
+            error: state.fieldErrors['phrase'],
+            onChanged: (v) => context.read<ContentImportBloc>().add(UpdatePhraseEvent(v)),
+          ),
+        ];
+
+      case SignContentType.lesson:
+        return [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppDimensions.space),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.info.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(AppDimensions.radius),
             ),
-            child: Icon(icon, color: color, size: 32),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Row(
               children: [
-                Text(path.split('/').last, style: AppTypography.titleSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-                Row(
-                  children: [
-                    Icon(Icons.check_circle, size: 16, color: color),
-                    const SizedBox(width: 4),
-                    Text('Archivo seleccionado', style: AppTypography.bodySmall.copyWith(color: color)),
-                  ],
+                const Icon(Icons.info_outline, color: AppColors.info),
+                const SizedBox(width: AppDimensions.space),
+                Expanded(
+                  child: Text(
+                    'Las lecciones se asocian automáticamente a través del sistema de módulos y actividades.',
+                    style: AppTypography.bodySmall.copyWith(color: AppColors.info),
+                  ),
                 ),
               ],
             ),
           ),
-          IconButton(onPressed: onRemove, icon: const Icon(Icons.close), color: AppColors.textSecondary),
-        ],
-      ),
-    );
+        ];
+    }
   }
 
-  Widget _buildErrorText(String error) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8, left: 12),
-      child: Text(error, style: AppTypography.bodySmall.copyWith(color: AppColors.error)),
-    );
-  }
-
-  Widget _buildHelperText(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 4, left: 12),
-      child: Text(text, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+  Widget _buildUrlField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    String? error,
+    required void Function(String) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          controller: controller,
+          keyboardType: TextInputType.url,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: hint,
+            prefixIcon: Icon(icon),
+            errorText: error,
+            suffixIcon: controller.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, size: 20),
+                    onPressed: () {
+                      controller.clear();
+                      onChanged('');
+                    },
+                  )
+                : null,
+          ),
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 
@@ -287,38 +333,99 @@ class _ImportContentPageState extends State<ImportContentPage> {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
-      decoration: InputDecoration(labelText: label, hintText: hint, prefixIcon: Icon(icon), errorText: error),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: maxLines == 1 ? Icon(icon) : null,
+        errorText: error,
+      ),
       onChanged: onChanged,
     );
   }
 
-  Widget _buildLevelDropdown(BuildContext context, ContentImportState state) {
+  Widget _buildLevelSectionDropdown(BuildContext context, ContentImportState state) {
     return DropdownButtonFormField<String>(
-      value: state.content.level.isEmpty ? null : state.content.level,
+      value: state.content.levelSectionId,
       decoration: InputDecoration(
-        labelText: 'Nivel / Sección',
+        labelText: 'Nivel / Sección *',
         prefixIcon: const Icon(Icons.signal_cellular_alt),
-        errorText: state.fieldErrors['level'],
+        errorText: state.fieldErrors['levelSection'],
       ),
-      items: ContentCategories.levels.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
-      onChanged: (v) {
-        if (v != null) context.read<ContentImportBloc>().add(UpdateLevelEvent(v));
+      items: ContentCategories.levelSections.map((level) {
+        return DropdownMenuItem(
+          value: level['id'],
+          child: Text(level['name']!),
+        );
+      }).toList(),
+      onChanged: (value) {
+        if (value != null) {
+          context.read<ContentImportBloc>().add(UpdateLevelSectionEvent(value));
+        }
       },
     );
   }
 
-  Widget _buildCategoryDropdown(BuildContext context, ContentImportState state) {
-    final categories = state.isCommonPhrases ? ContentCategories.commonPhraseCategories : ContentCategories.signCategories;
+  Widget _buildContentCategoryDropdown(BuildContext context, ContentImportState state) {
     return DropdownButtonFormField<String>(
-      value: state.content.category.isEmpty ? null : state.content.category,
+      value: state.content.contentCategoryId,
       decoration: InputDecoration(
-        labelText: 'Categoría de la seña',
+        labelText: 'Categoría de la seña *',
         prefixIcon: const Icon(Icons.category),
-        errorText: state.fieldErrors['category'],
+        errorText: state.fieldErrors['contentCategory'],
       ),
-      items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-      onChanged: (v) {
-        if (v != null) context.read<ContentImportBloc>().add(UpdateCategoryEvent(v));
+      items: ContentCategories.signCategories.map((category) {
+        return DropdownMenuItem(
+          value: category,
+          child: Text(category),
+        );
+      }).toList(),
+      onChanged: (value) {
+        if (value != null) {
+          context.read<ContentImportBloc>().add(UpdateContentCategoryEvent(value));
+        }
+      },
+    );
+  }
+
+  Widget _buildCommonPhraseCategoryDropdown(BuildContext context, ContentImportState state) {
+    return DropdownButtonFormField<String>(
+      value: state.content.commonPhraseCategoryId,
+      decoration: InputDecoration(
+        labelText: 'Categoría de frase *',
+        prefixIcon: const Icon(Icons.chat),
+        errorText: state.fieldErrors['commonPhraseCategory'],
+      ),
+      items: ContentCategories.commonPhraseCategories.map((category) {
+        return DropdownMenuItem(
+          value: category,
+          child: Text(category),
+        );
+      }).toList(),
+      onChanged: (value) {
+        if (value != null) {
+          context.read<ContentImportBloc>().add(UpdateCommonPhraseCategoryEvent(value));
+        }
+      },
+    );
+  }
+
+  Widget _buildAgeCategoryDropdown(BuildContext context, ContentImportState state) {
+    return DropdownButtonFormField<String>(
+      value: state.content.ageCategoryId,
+      decoration: const InputDecoration(
+        labelText: 'Rango de edad (opcional)',
+        prefixIcon: Icon(Icons.people_outline),
+      ),
+      items: ContentCategories.ageCategories.map((age) {
+        return DropdownMenuItem(
+          value: age['id'] as String,
+          child: Text(age['name'] as String),
+        );
+      }).toList(),
+      onChanged: (value) {
+        if (value != null) {
+          context.read<ContentImportBloc>().add(UpdateAgeCategoryEvent(value));
+        }
       },
     );
   }
@@ -332,36 +439,48 @@ class _ImportContentPageState extends State<ImportContentPage> {
             Expanded(
               child: TextField(
                 controller: _keywordController,
-                decoration: const InputDecoration(hintText: 'Agregar palabra clave', prefixIcon: Icon(Icons.add)),
+                decoration: const InputDecoration(
+                  hintText: 'Agregar palabra clave',
+                  prefixIcon: Icon(Icons.add),
+                ),
                 onSubmitted: (_) => _addKeyword(context),
               ),
             ),
             const SizedBox(width: 8),
-            IconButton.filled(onPressed: () => _addKeyword(context), icon: const Icon(Icons.add)),
+            IconButton.filled(
+              onPressed: () => _addKeyword(context),
+              icon: const Icon(Icons.add),
+            ),
           ],
         ),
-        const SizedBox(height: AppDimensions.spaceS),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: state.content.keywords.map((k) {
-            return Chip(
-              label: Text(k),
-              deleteIcon: const Icon(Icons.close, size: 18),
-              onDeleted: () => context.read<ContentImportBloc>().add(RemoveKeywordEvent(k)),
-            );
-          }).toList(),
-        ),
+        if (state.content.keywords.isNotEmpty) ...[
+          const SizedBox(height: AppDimensions.spaceS),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: state.content.keywords.map((keyword) {
+              return Chip(
+                label: Text(keyword),
+                deleteIcon: const Icon(Icons.close, size: 18),
+                onDeleted: () => context.read<ContentImportBloc>().add(RemoveKeywordEvent(keyword)),
+              );
+            }).toList(),
+          ),
+        ],
       ],
     );
   }
 
   Widget _buildSubmitButton(BuildContext context, ContentImportState state) {
     return ElevatedButton.icon(
-      onPressed: state.canSubmit ? () => context.read<ContentImportBloc>().add(const SubmitContentEvent()) : null,
+      onPressed: state.canSubmit
+          ? () => context.read<ContentImportBloc>().add(const SubmitContentEvent())
+          : null,
       icon: const Icon(Icons.cloud_upload),
-      label: const Text('Importar Contenido'),
-      style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: AppDimensions.space)),
+      label: const Text('Guardar Contenido'),
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: AppDimensions.space),
+      ),
     );
   }
 
@@ -379,19 +498,27 @@ class _ImportContentPageState extends State<ImportContentPage> {
             children: [
               const Icon(Icons.info_outline, color: AppColors.info, size: 20),
               const SizedBox(width: 8),
-              Text('Formatos permitidos', style: AppTypography.titleSmall.copyWith(color: AppColors.info)),
+              Text(
+                'Formatos recomendados',
+                style: AppTypography.titleSmall.copyWith(color: AppColors.info),
+              ),
             ],
           ),
           const SizedBox(height: 8),
-          Text('• Video: MP4', style: AppTypography.bodySmall),
-          Text('• Imagen: JPG, PNG', style: AppTypography.bodySmall),
-          Text('• Tamaño máximo: 50 MB', style: AppTypography.bodySmall),
+          Text('• Video: MP4, WebM (YouTube, Vimeo, etc.)', style: AppTypography.bodySmall),
+          Text('• Imagen: JPG, PNG, WebP', style: AppTypography.bodySmall),
+          Text('• Audio: MP3, WAV, OGG', style: AppTypography.bodySmall),
+          const SizedBox(height: 4),
+          Text(
+            '• Asegúrate de que las URLs sean públicamente accesibles',
+            style: AppTypography.bodySmall.copyWith(fontStyle: FontStyle.italic),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildUploadingOverlay(ContentImportState state) {
+  Widget _buildSubmittingOverlay() {
     return Container(
       color: Colors.black54,
       child: Center(
@@ -404,30 +531,19 @@ class _ImportContentPageState extends State<ImportContentPage> {
               children: [
                 const CircularProgressIndicator(),
                 const SizedBox(height: AppDimensions.space),
-                Text('Importando contenido...', style: AppTypography.titleMedium),
-                const SizedBox(height: AppDimensions.space),
-                if (state.progress.videoProgress > 0)
-                  Column(
-                    children: [
-                      Text('Video: ${(state.progress.videoProgress * 100).toInt()}%'),
-                      LinearProgressIndicator(value: state.progress.videoProgress),
-                    ],
-                  ),
+                Text('Guardando contenido...', style: AppTypography.titleMedium),
+                const SizedBox(height: AppDimensions.spaceS),
+                Text(
+                  'Por favor espere mientras se procesa el contenido',
+                  style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
           ),
         ),
       ),
     );
-  }
-
-  void _pickVideo(BuildContext context) {
-    // Simulación - en producción usar file_picker
-    context.read<ContentImportBloc>().add(const SelectVideoEvent('/storage/DCIM/video_seña.mp4'));
-  }
-
-  void _pickImage(BuildContext context) {
-    context.read<ContentImportBloc>().add(const SelectImageEvent('/storage/DCIM/imagen_seña.jpg'));
   }
 
   void _addKeyword(BuildContext context) {
@@ -441,7 +557,11 @@ class _ImportContentPageState extends State<ImportContentPage> {
   void _resetForm(BuildContext context) {
     context.read<ContentImportBloc>().add(const ResetFormEvent());
     _titleController.clear();
+    _videoUrlController.clear();
+    _imageUrlController.clear();
+    _audioUrlController.clear();
     _phraseController.clear();
+    _exampleSentenceController.clear();
     _keywordController.clear();
   }
 
@@ -451,15 +571,17 @@ class _ImportContentPageState extends State<ImportContentPage> {
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         icon: const Icon(Icons.check_circle, color: AppColors.success, size: 64),
-        title: const Text('¡Contenido Importado!'),
-        content: const Text('El contenido se ha importado correctamente y estará disponible para los padres.'),
+        title: const Text('¡Contenido Guardado!'),
+        content: const Text(
+          'El contenido se ha guardado correctamente y estará disponible para los estudiantes.',
+        ),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               _resetForm(context);
             },
-            child: const Text('Importar otro'),
+            child: const Text('Agregar otro'),
           ),
           ElevatedButton(
             onPressed: () {

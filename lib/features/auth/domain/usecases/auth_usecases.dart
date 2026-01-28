@@ -112,3 +112,36 @@ class RefreshTokenUseCase {
     return repository.refreshToken();
   }
 }
+
+/// Use Case: Update Profile
+class UpdateProfileUseCase {
+  final AuthRepository repository;
+
+  UpdateProfileUseCase(this.repository);
+
+  Future<Either<Failure, User>> call(UpdateProfileParams params) {
+    return repository.updateProfile(params);
+  }
+}
+
+/// Use Case: Change Password
+class ChangePasswordUseCase {
+  final AuthRepository repository;
+
+  ChangePasswordUseCase(this.repository);
+
+  Future<Either<Failure, MessageResponse>> call(ChangePasswordParams params) {
+    return repository.changePassword(params);
+  }
+}
+
+/// Use Case: Delete Account
+class DeleteAccountUseCase {
+  final AuthRepository repository;
+
+  DeleteAccountUseCase(this.repository);
+
+  Future<Either<Failure, MessageResponse>> call(String password) {
+    return repository.deleteAccount(password);
+  }
+}

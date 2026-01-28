@@ -215,7 +215,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final user = await remoteDataSource.getCurrentUser();
       await localDataSource.cacheUser(user);
-      
+
       return Right(AuthResponse(
         accessToken: '',
         refreshToken: '',
@@ -224,6 +224,73 @@ class AuthRepositoryImpl implements AuthRepository {
     } on AuthException {
       await localDataSource.clearCache();
       return Left(AuthFailure.sessionExpired());
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, User>> updateProfile(UpdateProfileParams params) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+
+    try {
+      final user = await remoteDataSource.updateProfile(params);
+      await localDataSource.cacheUser(user);
+      return Right(user.toEntity());
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, code: e.code));
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, MessageResponse>> changePassword(ChangePasswordParams params) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+
+    try {
+      final result = await remoteDataSource.changePassword(params);
+      return Right(MessageResponse(
+        message: result.message,
+        success: result.success,
+      ));
+    } on AuthException catch (e) {
+      return Left(AuthFailure(message: e.message, code: e.code));
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, code: e.code));
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, MessageResponse>> deleteAccount(String password) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+
+    try {
+      final result = await remoteDataSource.deleteAccount(password);
+      // Limpiar caché local después de eliminar la cuenta
+      await localDataSource.clearCache();
+      return Right(MessageResponse(
+        message: result.message,
+        success: result.success,
+      ));
+    } on AuthException catch (e) {
+      return Left(AuthFailure(message: e.message, code: e.code));
+    } on ServerException catch (e) {
+      if (e.statusCode == 401) {
+        return const Left(AuthFailure(
+          message: 'Contraseña incorrecta',
+          code: 'INVALID_PASSWORD',
+        ));
+      }
+      return Left(ServerFailure(message: e.message, code: e.code));
     } catch (e) {
       return Left(ServerFailure(message: e.toString()));
     }

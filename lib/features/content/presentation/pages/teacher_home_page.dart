@@ -851,7 +851,7 @@ class _ContentTab extends StatelessWidget {
                 title: 'Ver Niveles',
                 subtitle: 'Revisa los niveles y módulos disponibles',
                 color: AppColors.secondary,
-                onTap: () => AppNavigator.pushNamed(AppRoutes.parentHome),
+                onTap: () => AppNavigator.pushNamed(AppRoutes.contentBrowser),
               ),
               _ContentOptionCard(
                 icon: Icons.front_hand,
@@ -915,12 +915,35 @@ class _ProfileTab extends StatelessWidget {
               ),
               const SizedBox(height: AppDimensions.spaceXL),
               
-              // Opciones
+              // Opciones de cuenta
               _ProfileOption(
                 icon: Icons.person,
                 title: 'Editar Perfil',
-                onTap: () => AppNavigator.pushNamed(AppRoutes.profile),
+                onTap: () => AppNavigator.pushNamed(AppRoutes.editProfile),
               ),
+              _ProfileOption(
+                icon: Icons.lock_outline,
+                title: 'Cambiar Contraseña',
+                onTap: () => AppNavigator.pushNamed(AppRoutes.changePassword),
+              ),
+
+              const Divider(height: 32),
+
+              // Gestión
+              _ProfileOption(
+                icon: Icons.school,
+                title: 'Mis Clases',
+                onTap: () => AppNavigator.pushNamed(AppRoutes.teacherClasses),
+              ),
+              _ProfileOption(
+                icon: Icons.file_upload_outlined,
+                title: 'Importar Contenido',
+                onTap: () => AppNavigator.pushNamed(AppRoutes.importContent),
+              ),
+
+              const Divider(height: 32),
+
+              // Configuración
               _ProfileOption(
                 icon: Icons.notifications,
                 title: 'Notificaciones',
@@ -932,16 +955,36 @@ class _ProfileTab extends StatelessWidget {
                 onTap: () => AppNavigator.pushNamed(AppRoutes.appearanceSettings),
               ),
               _ProfileOption(
+                icon: Icons.workspace_premium,
+                title: 'Suscripción',
+                onTap: () => AppNavigator.pushNamed(AppRoutes.membership),
+              ),
+
+              const Divider(height: 32),
+
+              // Ayuda y sesión
+              _ProfileOption(
                 icon: Icons.help,
                 title: 'Ayuda',
                 onTap: () {},
               ),
-              const Divider(height: 32),
               _ProfileOption(
                 icon: Icons.logout,
                 title: 'Cerrar Sesión',
                 color: AppColors.error,
                 onTap: () => _confirmLogout(context),
+              ),
+
+              const SizedBox(height: AppDimensions.space),
+
+              // Eliminar cuenta
+              TextButton.icon(
+                onPressed: () => _showDeleteAccountDialog(context),
+                icon: const Icon(Icons.delete_forever, color: AppColors.error, size: 18),
+                label: Text(
+                  'Eliminar mi cuenta',
+                  style: AppTypography.bodySmall.copyWith(color: AppColors.error),
+                ),
               ),
             ],
           ),
@@ -968,6 +1011,81 @@ class _ProfileTab extends StatelessWidget {
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Cerrar Sesión'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    final passwordController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: AppColors.error),
+            const SizedBox(width: 8),
+            const Text('Eliminar cuenta'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Esta acción es permanente y no se puede deshacer.',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.error,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: AppDimensions.space),
+            const Text(
+              'Se eliminarán todos tus datos incluyendo:',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: AppDimensions.spaceS),
+            const Text('• Tu perfil y configuraciones'),
+            const Text('• Todas tus clases creadas'),
+            const Text('• Historial de actividades'),
+            const SizedBox(height: AppDimensions.space),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Confirma tu contraseña',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.lock_outline),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (passwordController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Por favor ingresa tu contraseña'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+                return;
+              }
+              Navigator.pop(dialogContext);
+              context.read<AuthBloc>().add(
+                    AuthDeleteAccountEvent(password: passwordController.text),
+                  );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Eliminar cuenta'),
           ),
         ],
       ),

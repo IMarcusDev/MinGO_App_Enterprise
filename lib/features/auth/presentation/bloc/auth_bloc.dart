@@ -16,6 +16,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final ForgotPasswordUseCase forgotPasswordUseCase;
   final ResetPasswordUseCase resetPasswordUseCase;
   final RefreshTokenUseCase refreshTokenUseCase;
+  final UpdateProfileUseCase updateProfileUseCase;
+  final ChangePasswordUseCase changePasswordUseCase;
+  final DeleteAccountUseCase deleteAccountUseCase;
 
   AuthBloc({
     required this.loginUseCase,
@@ -28,6 +31,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this.forgotPasswordUseCase,
     required this.resetPasswordUseCase,
     required this.refreshTokenUseCase,
+    required this.updateProfileUseCase,
+    required this.changePasswordUseCase,
+    required this.deleteAccountUseCase,
   }) : super(const AuthInitialState()) {
     on<AuthCheckStatusEvent>(_onCheckStatus);
     on<AuthLoginEvent>(_onLogin);
@@ -38,6 +44,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthForgotPasswordEvent>(_onForgotPassword);
     on<AuthResetPasswordEvent>(_onResetPassword);
     on<AuthClearErrorEvent>(_onClearError);
+    on<AuthUpdateProfileEvent>(_onUpdateProfile);
+    on<AuthChangePasswordEvent>(_onChangePassword);
+    on<AuthDeleteAccountEvent>(_onDeleteAccount);
   }
 
   Future<void> _onCheckStatus(
@@ -225,5 +234,71 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) {
     emit(const AuthUnauthenticatedState());
+  }
+
+  Future<void> _onUpdateProfile(
+    AuthUpdateProfileEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoadingState(message: 'Actualizando perfil...'));
+
+    final result = await updateProfileUseCase(UpdateProfileParams(
+      name: event.name,
+      phone: event.phone,
+    ));
+
+    result.fold(
+      (failure) => emit(AuthErrorState(
+        message: failure.message,
+        code: failure.code,
+      )),
+      (user) {
+        emit(AuthProfileUpdatedState(
+          user: user,
+          message: 'Perfil actualizado correctamente',
+        ));
+      },
+    );
+  }
+
+  Future<void> _onChangePassword(
+    AuthChangePasswordEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoadingState(message: 'Cambiando contraseña...'));
+
+    final result = await changePasswordUseCase(ChangePasswordParams(
+      currentPassword: event.currentPassword,
+      newPassword: event.newPassword,
+    ));
+
+    result.fold(
+      (failure) => emit(AuthErrorState(
+        message: failure.message,
+        code: failure.code,
+      )),
+      (response) {
+        emit(AuthPasswordChangedState(message: response.message));
+      },
+    );
+  }
+
+  Future<void> _onDeleteAccount(
+    AuthDeleteAccountEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoadingState(message: 'Eliminando cuenta...'));
+
+    final result = await deleteAccountUseCase(event.password);
+
+    result.fold(
+      (failure) => emit(AuthErrorState(
+        message: failure.message,
+        code: failure.code,
+      )),
+      (response) {
+        emit(AuthAccountDeletedState(message: response.message));
+      },
+    );
   }
 }

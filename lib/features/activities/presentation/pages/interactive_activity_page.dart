@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../content/domain/entities/content_entities.dart' hide SignContent;
+import '../../../progress/domain/entities/progress_entities.dart';
+import '../../../progress/presentation/bloc/progress_bloc.dart';
 import '../../domain/entities/activity_entities.dart';
 import '../widgets/video_activity_widget.dart';
 import '../widgets/quiz_activity_widget.dart';
@@ -15,11 +18,13 @@ import '../widgets/activity_result_widget.dart';
 class InteractiveActivityPage extends StatefulWidget {
   final Activity activity;
   final ActivityData? activityData;
+  final String? lessonId;
 
   const InteractiveActivityPage({
     super.key,
     required this.activity,
     this.activityData,
+    this.lessonId,
   });
 
   @override
@@ -36,7 +41,28 @@ class _InteractiveActivityPageState extends State<InteractiveActivityPage> {
       _showResult = true;
     });
 
-    // TODO: Guardar progreso en el servidor
+    // Guardar progreso en el servidor
+    _saveProgressToServer(result);
+  }
+
+  void _saveProgressToServer(ActivityResult result) {
+    final lessonId = widget.lessonId ?? widget.activity.lessonId;
+
+    try {
+      context.read<ProgressBloc>().add(
+            RecordAttemptEvent(
+              RecordAttemptParams(
+                lessonId: lessonId,
+                activityId: widget.activity.id,
+                correct: result.passed,
+                timeSpent: result.timeTaken.inSeconds,
+              ),
+            ),
+          );
+    } catch (e) {
+      // Si no hay ProgressBloc en el árbol, no fallar silenciosamente
+      debugPrint('Error al guardar progreso: $e');
+    }
   }
 
   void _onContinue() {

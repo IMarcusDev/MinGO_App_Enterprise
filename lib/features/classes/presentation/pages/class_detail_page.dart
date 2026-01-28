@@ -9,6 +9,7 @@ import '../../../../core/constants/app_typography.dart';
 import '../../../../injection_container.dart';
 import '../../domain/entities/class_entities.dart';
 import '../bloc/class_bloc.dart';
+import '../widgets/lesson_selector_dialog.dart';
 
 class ClassDetailPage extends StatelessWidget {
   final String classId;
@@ -252,61 +253,156 @@ class _ClassDetailViewState extends State<_ClassDetailView>
     );
   }
 
-  void _showCreateAssignmentDialog(BuildContext context) {
-    final titleController = TextEditingController();
+  void _showCreateAssignmentDialog(BuildContext context) async {
+    // Primero seleccionar la lección
+    final lessonSelection = await LessonSelectorDialog.show(context);
+
+    if (lessonSelection == null || !context.mounted) return;
+
+    // Luego mostrar el dialog para completar los detalles
+    final titleController = TextEditingController(
+      text: 'Practicar: ${lessonSelection.lessonTitle}',
+    );
     final descController = TextEditingController();
+    DateTime? selectedDueDate;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Nueva Tarea'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Título',
-                  hintText: 'Ej: Practicar saludos',
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descController,
-                decoration: const InputDecoration(
-                  labelText: 'Descripción (opcional)',
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Nota: Seleccionar lección próximamente',
-                style: TextStyle(color: AppColors.textHint, fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (titleController.text.trim().isNotEmpty) {
-                // TODO: Agregar selector de lección
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Función próximamente disponible'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Nueva Tarea'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Lección seleccionada
+                Container(
+                  padding: const EdgeInsets.all(AppDimensions.spaceM),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusS),
                   ),
-                );
-              }
-            },
-            child: const Text('Crear'),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.school, color: AppColors.primary, size: 20),
+                      const SizedBox(width: AppDimensions.spaceS),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Lección seleccionada:',
+                              style: AppTypography.labelSmall.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            Text(
+                              lessonSelection.lessonTitle,
+                              style: AppTypography.bodyMedium.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit, size: 18),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _showCreateAssignmentDialog(context);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppDimensions.space),
+
+                // Título
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Título de la tarea',
+                    hintText: 'Ej: Practicar saludos básicos',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: AppDimensions.space),
+
+                // Descripción
+                TextField(
+                  controller: descController,
+                  decoration: const InputDecoration(
+                    labelText: 'Descripción (opcional)',
+                    hintText: 'Instrucciones adicionales...',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: AppDimensions.space),
+
+                // Fecha de vencimiento
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now().add(const Duration(days: 7)),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setState(() => selectedDueDate = picked);
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Fecha de entrega (opcional)',
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.calendar_today),
+                    ),
+                    child: Text(
+                      selectedDueDate != null
+                          ? DateFormat('dd/MM/yyyy').format(selectedDueDate!)
+                          : 'Sin fecha límite',
+                      style: TextStyle(
+                        color: selectedDueDate != null
+                            ? null
+                            : AppColors.textHint,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (titleController.text.trim().isNotEmpty) {
+                  Navigator.pop(ctx);
+                  context.read<ClassBloc>().add(
+                        CreateAssignmentEvent(
+                          widget.classId,
+                          CreateAssignmentParams(
+                            lessonId: lessonSelection.lessonId,
+                            title: titleController.text.trim(),
+                            description: descController.text.trim().isEmpty
+                                ? null
+                                : descController.text.trim(),
+                            dueDate: selectedDueDate,
+                          ),
+                        ),
+                      );
+                }
+              },
+              child: const Text('Crear Tarea'),
+            ),
+          ],
+        ),
       ),
     );
   }

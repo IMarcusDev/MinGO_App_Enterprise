@@ -11,13 +11,13 @@ import 'injection_container.dart' as di;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Configurar orientación
+  // Orientación
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // Configurar estilo de la barra de estado
+  // Barra de estado
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -25,25 +25,25 @@ void main() async {
     ),
   );
 
-  // Inicializar configuración
+  // Configuración
   AppConfig.initialize(Environment.dev);
 
-  // Inicializar Hive para caché offline
+  // Cache
   await CacheService.instance.init();
 
-  // Inicializar notificaciones locales
+  // Notificaciones
   await NotificationService.instance.init();
 
-  // Inicializar inyección de dependencias
+  // Inyección de dependencias
   await di.init();
 
-  // Configurar observador de BLoC para debugging
+  // BLoC observer
   Bloc.observer = AppBlocObserver();
 
   runApp(const MingoApp());
 }
 
-/// Observador de BLoC para debugging
+/// Observer para debugging
 class AppBlocObserver extends BlocObserver {
   @override
   void onChange(BlocBase bloc, Change change) {

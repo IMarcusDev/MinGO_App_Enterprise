@@ -99,3 +99,41 @@ class AuthResetPasswordEvent extends AuthEvent {
 class AuthClearErrorEvent extends AuthEvent {
   const AuthClearErrorEvent();
 }
+
+/// Actualizar perfil
+class AuthUpdateProfileEvent extends AuthEvent {
+  final String name;
+  final String? phone;
+
+  const AuthUpdateProfileEvent({
+    required this.name,
+    this.phone,
+  });
+
+  @override
+  List<Object?> get props => [name, phone];
+}
+
+/// Cambiar contraseña (autenticado)
+class AuthChangePasswordEvent extends AuthEvent {
+  final String currentPassword;
+  final String newPassword;
+
+  const AuthChangePasswordEvent({
+    required this.currentPassword,
+    required this.newPassword,
+  });
+
+  @override
+  List<Object?> get props => [currentPassword, newPassword];
+}
+
+/// Eliminar cuenta
+class AuthDeleteAccountEvent extends AuthEvent {
+  final String password;
+
+  const AuthDeleteAccountEvent({required this.password});
+
+  @override
+  List<Object?> get props => [password];
+}

@@ -106,3 +106,37 @@ class AuthErrorState extends AuthState {
   @override
   List<Object?> get props => [message, code];
 }
+
+/// Perfil actualizado exitosamente
+class AuthProfileUpdatedState extends AuthState {
+  final User user;
+  final String message;
+
+  const AuthProfileUpdatedState({
+    required this.user,
+    required this.message,
+  });
+
+  @override
+  List<Object?> get props => [user, message];
+}
+
+/// Contraseña cambiada exitosamente
+class AuthPasswordChangedState extends AuthState {
+  final String message;
+
+  const AuthPasswordChangedState({required this.message});
+
+  @override
+  List<Object?> get props => [message];
+}
+
+/// Cuenta eliminada exitosamente
+class AuthAccountDeletedState extends AuthState {
+  final String message;
+
+  const AuthAccountDeletedState({required this.message});
+
+  @override
+  List<Object?> get props => [message];
+}

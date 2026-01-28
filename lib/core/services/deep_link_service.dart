@@ -1,47 +1,49 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:app_links/app_links.dart'; // <--- Nueva librería
+import 'package:app_links/app_links.dart';
+
+import '../config/routes.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 
 class DeepLinkService {
   final AuthRepository _authRepository;
-  StreamSubscription? _sub;
-  final _appLinks = AppLinks(); // <--- Instancia de AppLinks
+  final AppLinks _appLinks = AppLinks();
+  StreamSubscription<Uri>? _sub;
+
+  /// 🔐 Flag GLOBAL para bloquear navegación del Splash
+  static bool hasPendingDeepLink = false;
 
   DeepLinkService(this._authRepository);
 
   Future<void> initDeepLinks(BuildContext context) async {
-    // 1. Manejar link inicial (App cerrada)
+    // 1️⃣ App cerrada
     try {
-      final initialUri = await _appLinks.getInitialLink(); // <--- Cambio aquí
-      if (initialUri != null && context.mounted) {
-        _handleDeepLink(initialUri, context);
+      final uri = await _appLinks.getInitialLink();
+      if (uri != null && context.mounted) {
+        hasPendingDeepLink = true;
+        _handleDeepLink(uri, context);
       }
     } catch (e) {
-      debugPrint('Error getting initial URI: $e');
+      debugPrint('Initial deep link error: $e');
     }
 
-    // 2. Escuchar links (App abierta/segundo plano)
-    _sub = _appLinks.uriLinkStream.listen( // <--- Cambio aquí
-      (Uri uri) {
+    // 2️⃣ App abierta / background
+    _sub = _appLinks.uriLinkStream.listen(
+      (uri) {
         if (context.mounted) {
+          hasPendingDeepLink = true;
           _handleDeepLink(uri, context);
         }
       },
-      onError: (err) {
-        debugPrint('Error listening to URI stream: $err');
-      },
+      onError: (e) => debugPrint('Deep link stream error: $e'),
     );
   }
 
-  // --- El resto del código es IDÉNTICO al que tenías ---
-
   void _handleDeepLink(Uri uri, BuildContext context) {
-    debugPrint('Deep link received: $uri');
+    debugPrint('Deep link recibido: $uri');
 
-    // Verificar el esquema (mingo://)
     if (uri.scheme != 'mingo') {
-      debugPrint('Invalid scheme: ${uri.scheme}');
+      hasPendingDeepLink = false;
       return;
     }
 
@@ -49,76 +51,80 @@ class DeepLinkService {
       case 'verify-email':
         final token = uri.queryParameters['token'];
         if (token != null) {
-          _verifyEmail(token, context);
-        } else {
-          _showError(context, 'Token de verificación no encontrado');
+          AppNavigator.pushNamed(
+            AppRoutes.verifyEmail,
+            arguments: token,
+          );
         }
+        hasPendingDeepLink = false;
         break;
 
       case 'reset-password':
         final token = uri.queryParameters['token'];
         if (token != null) {
-          _navigateToResetPassword(token, context);
-        } else {
-          _showError(context, 'Token de reset no encontrado');
+          AppNavigator.pushNamed(
+            AppRoutes.resetPassword,
+            arguments: token,
+          );
         }
+        hasPendingDeepLink = false;
         break;
 
       default:
-        debugPrint('Unknown deep link host: ${uri.host}');
+        debugPrint('Deep link no reconocido: ${uri.host}');
+        hasPendingDeepLink = false;
     }
   }
 
   Future<void> _verifyEmail(String token, BuildContext context) async {
-    _showLoading(context, 'Verificando email...');
-    try {
-      final result = await _authRepository.verifyEmail(token);
-      if (!context.mounted) return;
-      Navigator.of(context).pop(); // Cerrar loading
+    _loading(context, 'Verificando email...');
 
-      result.fold(
-        (failure) => _showError(context, 'Error: ${failure.message}'),
-        (response) {
-          _showSuccess(context, response.message);
-          Future.delayed(const Duration(seconds: 2), () {
-            if (context.mounted) {
-              Navigator.of(context).pushNamedAndRemoveUntil('/login', (r) => false);
-            }
-          });
-        },
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      Navigator.of(context).pop();
-      _showError(context, 'Error inesperado: $e');
-    }
+    final result = await _authRepository.verifyEmail(token);
+
+    if (!context.mounted) return;
+    Navigator.of(context).pop();
+
+    result.fold(
+      (failure) {
+        _error(context, failure.message);
+        hasPendingDeepLink = false;
+      },
+      (success) {
+        _success(context, success.message);
+        Future.delayed(const Duration(seconds: 2), () {
+          AppNavigator.pushNamedAndRemoveUntil(
+            AppRoutes.login,
+            (r) => false,
+          );
+          hasPendingDeepLink = false;
+        });
+      },
+    );
   }
 
-  void _navigateToResetPassword(String token, BuildContext context) {
-    Navigator.of(context).pushNamed('/reset-password', arguments: token);
-  }
-
-  void _showLoading(BuildContext context, String message) {
+  void _loading(BuildContext context, String msg) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        content: Row(children: [
-          const CircularProgressIndicator(),
-          const SizedBox(width: 16),
-          Expanded(child: Text(message)),
-        ]),
+      builder: (_) => AlertDialog(
+        content: Row(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(width: 16),
+            Expanded(child: Text(msg)),
+          ],
+        ),
       ),
     );
   }
 
-  void _showError(BuildContext context, String msg) {
+  void _error(BuildContext context, String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), backgroundColor: Colors.red),
     );
   }
 
-  void _showSuccess(BuildContext context, String msg) {
+  void _success(BuildContext context, String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), backgroundColor: Colors.green),
     );

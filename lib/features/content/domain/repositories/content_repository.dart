@@ -24,4 +24,21 @@ abstract class ContentRepository {
 
   /// Obtener actividades de una lección
   Future<Either<Failure, List<Activity>>> getActivities(String lessonId);
+
+  /// Buscar contenido por término
+  Future<Either<Failure, SearchResult>> searchContent(String query);
+}
+
+/// Resultado de búsqueda
+class SearchResult {
+  final List<Module> modules;
+  final List<Lesson> lessons;
+
+  const SearchResult({
+    required this.modules,
+    required this.lessons,
+  });
+
+  bool get isEmpty => modules.isEmpty && lessons.isEmpty;
+  int get totalCount => modules.length + lessons.length;
 }

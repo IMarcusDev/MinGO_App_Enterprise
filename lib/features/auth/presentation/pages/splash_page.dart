@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/config/routes.dart';
+import '../../../../core/deeplink/deep_link_state.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_typography.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_state.dart';
 
@@ -14,6 +14,9 @@ class SplashPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
+        // ⛔ NO navegar si hay deep link activo
+        if (DeepLinkState.isHandling) return;
+
         if (state is AuthAuthenticatedState) {
           AppNavigator.goToHome();
         } else if (state is AuthUnauthenticatedState) {
@@ -30,58 +33,22 @@ class SplashPage extends StatelessWidget {
           decoration: const BoxDecoration(
             gradient: AppColors.primaryGradient,
           ),
-          child: Center(
+          child: const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: Text(
-                      '🤟',
-                      style: TextStyle(fontSize: 60),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                
-                // Nombre
+                Text('🤟', style: TextStyle(fontSize: 60)),
+                SizedBox(height: 24),
                 Text(
                   'MinGO',
-                  style: AppTypography.displaySmall.copyWith(
+                  style: TextStyle(
+                    fontSize: 32,
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
-                
-                // Subtítulo
-                Text(
-                  'Aprende Lengua de Señas\nEcuatoriana',
-                  textAlign: TextAlign.center,
-                  style: AppTypography.bodyLarge.copyWith(
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-                const SizedBox(height: 48),
-                
-                // Loading
-                const CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
+                SizedBox(height: 48),
+                CircularProgressIndicator(color: Colors.white),
               ],
             ),
           ),

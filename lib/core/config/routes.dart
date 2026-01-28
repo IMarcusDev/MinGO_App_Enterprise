@@ -17,6 +17,7 @@ import '../../features/content/presentation/pages/level_detail_page.dart';
 import '../../features/content/presentation/pages/module_detail_page.dart';
 import '../../features/content/presentation/pages/activity_page.dart';
 import '../../features/content/presentation/pages/search_page.dart';
+import '../../features/content/presentation/pages/content_browser_page.dart';
 
 // Activities pages
 import '../../features/activities/presentation/pages/interactive_activity_page.dart';
@@ -59,6 +60,11 @@ import '../../features/hand_tracking/presentation/pages/sign_practice_page.dart'
 
 // Profile pages (dentro de auth por ahora)
 import '../../features/auth/presentation/pages/profile_page.dart';
+import '../../features/auth/presentation/pages/edit_profile_page.dart';
+import '../../features/auth/presentation/pages/change_password_page.dart';
+
+// Achievements pages
+import '../../features/achievements/presentation/pages/achievements_page.dart';
 
 /// Rutas de la aplicación
 class AppRoutes {
@@ -70,7 +76,9 @@ class AppRoutes {
   static const String resetPassword = '/reset-password';
   static const String verifyEmail = '/verify-email';
   static const String emailVerificationPending = '/email-verification-pending';
-  
+  static const String editProfile = '/edit-profile';
+  static const String changePassword = '/change-password';
+
   // Main
   static const String home = '/home';
   static const String parentHome = '/parent-home';
@@ -83,6 +91,7 @@ class AppRoutes {
   static const String moduleDetail = '/module';
   static const String activity = '/activity';
   static const String interactiveActivity = '/interactive-activity';
+  static const String contentBrowser = '/content-browser';
   
   // Children
   static const String children = '/children';
@@ -90,6 +99,7 @@ class AppRoutes {
   
   // Progress
   static const String progress = '/progress';
+  static const String achievements = '/achievements';
   
   // Classes
   static const String teacherClasses = '/teacher-classes';
@@ -127,6 +137,8 @@ class AppRoutes {
 /// Router de la aplicación
 class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
+    final uri = Uri.parse(settings.name ?? '');
+
     switch (settings.name) {
       // ============================================
       // Auth Routes
@@ -148,13 +160,25 @@ class AppRouter {
         return _buildRoute(ResetPasswordPage(token: token), settings);
         
       case AppRoutes.verifyEmail:
-        final token = settings.arguments as String?;
-        return _buildRoute(VerifyEmailPage(token: token), settings);
+        final token =
+            uri.queryParameters['token'] ??
+            settings.arguments as String?;
+
+        return _buildRoute(
+          VerifyEmailPage(token: token),
+          settings,
+        );
         
       case AppRoutes.emailVerificationPending:
         final email = settings.arguments as String?;
         return _buildRoute(EmailVerificationPendingPage(email: email), settings);
-      
+
+      case AppRoutes.editProfile:
+        return _buildRoute(const EditProfilePage(), settings);
+
+      case AppRoutes.changePassword:
+        return _buildRoute(const ChangePasswordPage(), settings);
+
       // ============================================
       // Main Routes
       // ============================================
@@ -206,7 +230,10 @@ class AppRouter {
       case AppRoutes.interactiveActivity:
         final activity = settings.arguments as Activity;
         return _buildRoute(InteractiveActivityPage(activity: activity), settings);
-      
+
+      case AppRoutes.contentBrowser:
+        return _buildRoute(const ContentBrowserPage(), settings);
+
       // ============================================
       // Children Routes
       // ============================================
@@ -222,6 +249,9 @@ class AppRouter {
       // ============================================
       case AppRoutes.progress:
         return _buildRoute(const ProgressPage(), settings);
+
+      case AppRoutes.achievements:
+        return _buildRoute(const AchievementsPage(), settings);
       
       // ============================================
       // Classes Routes

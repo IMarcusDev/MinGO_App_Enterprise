@@ -13,6 +13,8 @@ class ApiEndpoints {
   static const String authResendVerification = '/auth/resend-verification';
   static const String authForgotPassword = '/auth/forgot-password';
   static const String authResetPassword = '/auth/reset-password';
+  static const String authChangePassword = '/auth/change-password';
+  static const String authDeleteAccount = '/auth/delete-account';
 
   // ============================================
   // CHILDREN

@@ -47,6 +47,38 @@ class ResetPasswordParams {
   });
 }
 
+/// Parámetros para actualizar perfil
+class UpdateProfileParams {
+  final String name;
+  final String? phone;
+
+  const UpdateProfileParams({
+    required this.name,
+    this.phone,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        if (phone != null) 'phone': phone,
+      };
+}
+
+/// Parámetros para cambiar contraseña
+class ChangePasswordParams {
+  final String currentPassword;
+  final String newPassword;
+
+  const ChangePasswordParams({
+    required this.currentPassword,
+    required this.newPassword,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      };
+}
+
 /// Respuesta de autenticación
 class AuthResponse {
   final String accessToken;
@@ -102,4 +134,13 @@ abstract class AuthRepository {
 
   /// Refrescar token
   Future<Either<Failure, AuthResponse>> refreshToken();
+
+  /// Actualizar perfil de usuario
+  Future<Either<Failure, User>> updateProfile(UpdateProfileParams params);
+
+  /// Cambiar contraseña (usuario autenticado)
+  Future<Either<Failure, MessageResponse>> changePassword(ChangePasswordParams params);
+
+  /// Eliminar cuenta (requiere contraseña para confirmar)
+  Future<Either<Failure, MessageResponse>> deleteAccount(String password);
 }

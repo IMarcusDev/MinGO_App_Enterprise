@@ -17,6 +17,9 @@ abstract class AuthRemoteDataSource {
   Future<MessageResponseModel> resendVerification(String email);
   Future<MessageResponseModel> forgotPassword(String email);
   Future<MessageResponseModel> resetPassword(String token, String newPassword);
+  Future<UserModel> updateProfile(UpdateProfileParams params);
+  Future<MessageResponseModel> changePassword(ChangePasswordParams params);
+  Future<MessageResponseModel> deleteAccount(String password);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -188,6 +191,59 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
     throw ServerException(
       message: response.data['message'] ?? 'Token inválido o expirado',
+      statusCode: response.statusCode,
+    );
+  }
+
+  @override
+  Future<UserModel> updateProfile(UpdateProfileParams params) async {
+    final response = await apiClient.patch(
+      ApiEndpoints.authProfile,
+      data: params.toJson(),
+    );
+
+    if (response.statusCode == 200) {
+      return UserModel.fromJson(response.data);
+    }
+
+    throw ServerException(
+      message: response.data['message'] ?? 'Error al actualizar perfil',
+      statusCode: response.statusCode,
+    );
+  }
+
+  @override
+  Future<MessageResponseModel> changePassword(ChangePasswordParams params) async {
+    final response = await apiClient.post(
+      ApiEndpoints.authChangePassword,
+      data: params.toJson(),
+    );
+
+    if (response.statusCode == 200) {
+      return MessageResponseModel.fromJson(response.data);
+    }
+
+    throw ServerException(
+      message: response.data['message'] ?? 'Error al cambiar contraseña',
+      statusCode: response.statusCode,
+    );
+  }
+
+  @override
+  Future<MessageResponseModel> deleteAccount(String password) async {
+    final response = await apiClient.delete(
+      ApiEndpoints.authDeleteAccount,
+      data: {'password': password},
+    );
+
+    if (response.statusCode == 200) {
+      // Limpiar tokens después de eliminar la cuenta
+      await apiClient.clearTokens();
+      return MessageResponseModel.fromJson(response.data);
+    }
+
+    throw ServerException(
+      message: response.data['message'] ?? 'Error al eliminar la cuenta',
       statusCode: response.statusCode,
     );
   }

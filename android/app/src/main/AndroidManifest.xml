@@ -50,23 +50,25 @@
             </intent-filter>
 
             <!-- Deep Links para MinGO -->
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <!-- Acepta URIs como: mingo://verify-email?token=xxx -->
+                <!-- mingo://verify-email?token=xxx -->
                 <data
                     android:scheme="mingo"
                     android:host="verify-email" />
             </intent-filter>
 
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <!-- Acepta URIs como: mingo://reset-password?token=xxx -->
+                <!-- mingo://reset-password?token=xxx -->
                 <data
                     android:scheme="mingo"
                     android:host="reset-password" />
